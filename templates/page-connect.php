@@ -68,8 +68,10 @@ $amc_render_scope_summary = static function ( array $token ) use ( $scope_mode_l
 		$plain = $this->just_created['plain_token'];
 		?>
 		<div class="amc-card amc-card--success">
-			<h2><?php esc_html_e( '✅ Connection ready', 'mcp-env-wp' ); ?></h2>
-			<p><strong><?php esc_html_e( 'Copy this token now. It is shown once; use Show setup on the connection to get a new one later.', 'mcp-env-wp' ); ?></strong></p>
+			<h2><?php echo empty( $this->just_created['existing'] ) ? esc_html__( '✅ Connection created', 'mcp-env-wp' ) : esc_html__( '✅ Connection setup', 'mcp-env-wp' ); ?></h2>
+			<?php if ( empty( $this->just_created['existing'] ) ) : ?>
+				<p><strong><?php esc_html_e( 'Copy this token now and keep it somewhere safe: it is stored securely and can\'t be shown again. With it, Show setup on the connection rebuilds these instructions any time.', 'mcp-env-wp' ); ?></strong></p>
+			<?php endif; ?>
 
 			<div class="amc-copy-row">
 				<code id="amc-plain-token"><?php echo esc_html( $plain ); ?></code>
@@ -238,12 +240,18 @@ $amc_render_scope_summary = static function ( array $token ) use ( $scope_mode_l
 							<td><?php echo $token['last_used_at'] ? esc_html( human_time_diff( strtotime( $token['last_used_at'] . ' UTC' ) ) . ' ago' ) : esc_html__( 'Never', 'mcp-env-wp' ); ?></td>
 							<td><?php echo $token['expires_at'] ? esc_html( mysql2date( get_option( 'date_format' ), $token['expires_at'] ) ) : esc_html__( 'Never', 'mcp-env-wp' ); ?></td>
 							<td class="amc-row-actions">
-								<form method="post" onsubmit="return confirm('<?php echo esc_js( __( 'Show the setup again? A new token is issued for this connection and the old one stops working, so update it in your AI client.', 'mcp-env-wp' ) ); ?>');">
-									<?php wp_nonce_field( 'amc_regenerate_token' ); ?>
-									<input type="hidden" name="amc_action" value="regenerate_token" />
-									<input type="hidden" name="amc_token_id" value="<?php echo esc_attr( $token['id'] ); ?>" />
-									<button type="submit" class="button button-small"><?php esc_html_e( 'Show setup', 'mcp-env-wp' ); ?></button>
-								</form>
+								<details class="amc-show-setup">
+									<summary class="button button-small"><?php esc_html_e( 'Show setup', 'mcp-env-wp' ); ?></summary>
+									<form method="post" class="amc-show-setup__form">
+										<?php wp_nonce_field( 'amc_show_setup' ); ?>
+										<input type="hidden" name="amc_action" value="show_setup" />
+										<input type="hidden" name="amc_token_id" value="<?php echo esc_attr( $token['id'] ); ?>" />
+										<label class="screen-reader-text" for="amc-token-<?php echo esc_attr( $token['id'] ); ?>"><?php esc_html_e( 'Token', 'mcp-env-wp' ); ?></label>
+										<input type="password" id="amc-token-<?php echo esc_attr( $token['id'] ); ?>" name="amc_plain_token" class="regular-text" placeholder="<?php echo esc_attr( $token['token_prefix'] ); ?>" autocomplete="off" required />
+										<button type="submit" class="button button-primary button-small"><?php esc_html_e( 'Show', 'mcp-env-wp' ); ?></button>
+										<p class="description"><?php esc_html_e( 'Paste this connection\'s token to get its setup again. The token is not changed.', 'mcp-env-wp' ); ?></p>
+									</form>
+								</details>
 								<form method="post" onsubmit="return confirm('<?php echo esc_js( __( 'Revoke this connection? Anything using this token will stop working immediately.', 'mcp-env-wp' ) ); ?>');">
 									<?php wp_nonce_field( 'amc_revoke_token' ); ?>
 									<input type="hidden" name="amc_action" value="revoke_token" />

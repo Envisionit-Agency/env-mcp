@@ -68,7 +68,7 @@ final class AMC_Admin {
 	}
 
 	/**
-	 * Handles the "create token", "show setup" (regenerate) and "revoke token" form posts.
+	 * Handles the "create token", "show setup" (from a pasted token) and "revoke token" form posts.
 	 */
 	public function handle_actions(): void {
 		if ( ! isset( $_POST['amc_action'] ) || ! is_user_logged_in() ) {
@@ -97,16 +97,23 @@ final class AMC_Admin {
 			}
 		}
 
-		if ( 'regenerate_token' === $action ) {
-			check_admin_referer( 'amc_regenerate_token' );
+		if ( 'show_setup' === $action ) {
+			check_admin_referer( 'amc_show_setup' );
 
+			// Rebuild the setup from a token the user pastes back in. Tokens are stored hashed, so this only checks that
+			// it belongs to the chosen connection (and to this user); the token itself is never changed.
 			$token_id = isset( $_POST['amc_token_id'] ) ? absint( $_POST['amc_token_id'] ) : 0;
-			$result   = AMC_Token_Manager::instance()->regenerate_token( $token_id, $user->ID );
+			$plain    = isset( $_POST['amc_plain_token'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['amc_plain_token'] ) ) ) : '';
+			$row      = '' !== $plain ? AMC_Token_Manager::instance()->validate_token( $plain ) : null;
 
-			if ( is_wp_error( $result ) ) {
-				$this->error = $result;
+			if ( ! $row || (int) $row['id'] !== $token_id || (int) $row['user_id'] !== $user->ID ) {
+				$this->error = new WP_Error( 'amc_token_mismatch', __( 'That token does not match this connection. Check you copied the whole token, starting with amc_.', 'mcp-env-wp' ) );
 			} else {
-				$this->just_created = $result;
+				$this->just_created = array(
+					'id'          => $token_id,
+					'plain_token' => $plain,
+					'existing'    => true,
+				);
 			}
 		}
 

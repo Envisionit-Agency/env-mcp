@@ -253,43 +253,6 @@ final class AMC_Token_Manager {
 	}
 
 	/**
-	 * Issues a new secret for an existing, active connection the user owns: same name, scope and expiry, new token.
-	 * Tokens are stored hashed and cannot be shown again, so this is how a user gets their setup back. The old token
-	 * stops working at once.
-	 *
-	 * @return array{id:int,plain_token:string}|WP_Error
-	 */
-	public function regenerate_token( int $token_id, int $user_id ) {
-		global $wpdb;
-
-		$plain_token = 'amc_' . wp_generate_password( 40, false, false );
-		$updated     = $wpdb->update(
-			$this->table(),
-			array(
-				'token_hash'   => hash( 'sha256', $plain_token ),
-				'token_prefix' => substr( $plain_token, 0, 12 ) . '...',
-				'last_used_at' => null,
-			),
-			array(
-				'id'         => $token_id,
-				'user_id'    => $user_id,
-				'revoked_at' => null,
-			),
-			array( '%s', '%s', '%s' ),
-			array( '%d', '%d', '%s' )
-		);
-
-		if ( ! $updated ) {
-			return new WP_Error( 'amc_not_found', __( 'Connection not found or revoked.', 'mcp-env-wp' ) );
-		}
-
-		return array(
-			'id'          => $token_id,
-			'plain_token' => $plain_token,
-		);
-	}
-
-	/**
 	 * Revokes a token, only if it belongs to the given user (unless $force is true for admins).
 	 */
 	public function revoke_token( int $token_id, int $user_id, bool $force = false ) {
