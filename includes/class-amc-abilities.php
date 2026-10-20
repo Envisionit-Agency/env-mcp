@@ -1007,7 +1007,7 @@ final class AMC_Abilities {
 					'properties' => array(
 						'post_id' => array( 'type' => 'integer' ),
 						'key'     => array( 'type' => 'string' ),
-						'value'   => array(),
+						'value'   => array( 'description' => 'The value to store: text, number, boolean, array or object.' ),
 					),
 					'required'   => array( 'post_id', 'key', 'value' ),
 				),
@@ -1055,7 +1055,7 @@ final class AMC_Abilities {
 					'properties' => array(
 						'term_id' => array( 'type' => 'integer' ),
 						'key'     => array( 'type' => 'string' ),
-						'value'   => array(),
+						'value'   => array( 'description' => 'The value to store: text, number, boolean, array or object.' ),
 					),
 					'required'   => array( 'term_id', 'key', 'value' ),
 				),
