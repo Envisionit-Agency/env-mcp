@@ -71,7 +71,7 @@ final class AMC_Scopes {
 				'label'       => $ability->get_label(),
 				'description' => (string) $ability->get_description(),
 				'category'    => self::category_from_name( $name ),
-				'level'       => self::guess_level( $name ),
+				'level'       => self::guess_level( $name, $meta['annotations'] ?? array() ),
 			);
 		}
 
@@ -94,26 +94,34 @@ final class AMC_Scopes {
 		$map = array(
 			'core' => __( 'WordPress Core', 'mcp-env-wp' ),
 			'env-site' => __( 'Content & Site', 'mcp-env-wp' ),
+			'gravityforms' => __( 'Gravity Forms', 'mcp-env-wp' ),
 		);
 
 		return $map[ $ns ] ?? ucwords( str_replace( array( '-', '_' ), ' ', $ns ) );
 	}
 
 	/**
-	 * Heuristic risk classification based on the ability's action verb.
+	 * Risk level of an ability. Destructive: a delete-type verb anywhere in its action (delete-post, entries-delete).
+	 * Read: its readonly annotation when it declares one, else a read verb or a known read-only name. Otherwise write.
+	 * (The destructive annotation is not used: MCP sets it for anything that overwrites, so creates and updates carry it.)
+	 *
+	 * @param array<string,mixed> $annotations Ability meta annotations.
 	 */
-	public static function guess_level( string $name ): string {
+	public static function guess_level( string $name, array $annotations = array() ): string {
 		$slash  = strpos( $name, '/' );
 		$action = $slash ? substr( $name, $slash + 1 ) : $name;
+		$verbs  = array_map( static fn( $p ) => rtrim( $p, '-' ), self::DESTRUCTIVE_PREFIXES );
+
+		if ( array_intersect( explode( '-', $action ), $verbs ) ) {
+			return 'destructive';
+		}
+
+		if ( isset( $annotations['readonly'] ) ) {
+			return $annotations['readonly'] ? 'read' : 'write';
+		}
 
 		if ( in_array( $action, self::READ_EXCEPTIONS, true ) ) {
 			return 'read';
-		}
-
-		foreach ( self::DESTRUCTIVE_PREFIXES as $prefix ) {
-			if ( str_starts_with( $action, $prefix ) ) {
-				return 'destructive';
-			}
 		}
 
 		foreach ( self::READ_PREFIXES as $prefix ) {

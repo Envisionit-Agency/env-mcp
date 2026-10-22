@@ -28,6 +28,7 @@ require_once AMC_PLUGIN_DIR . 'includes/class-amc-seo-adapter.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-abilities.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-acf-abilities.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-media-audit.php';
+require_once AMC_PLUGIN_DIR . 'includes/class-amc-gravityforms.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-prompts.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-token-manager.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-activity.php';
