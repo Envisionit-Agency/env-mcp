@@ -50,6 +50,8 @@ $destr_count = count( array_filter( $abilities, static fn( $a ) => 'destructive'
 <body>
 	<div class="amc-consent-box">
 		<h1><?php echo esc_html( sprintf( /* translators: %s: OAuth client name */ __( '%s wants to connect', 'mcp-env-wp' ), $client['client_name'] ) ); ?></h1>
+		<?php // The name is whatever the app registered with; where it sends you back is what identifies it. ?>
+		<p><strong><?php echo esc_html( sprintf( /* translators: %s: host name */ __( 'After you approve, you will be sent to: %s', 'mcp-env-wp' ), (string) wp_parse_url( $redirect_uri, PHP_URL_HOST ) ) ); ?></strong></p>
 		<p>
 			<?php
 			echo esc_html(

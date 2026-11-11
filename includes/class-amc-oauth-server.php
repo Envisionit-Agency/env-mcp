@@ -109,6 +109,14 @@ final class AMC_OAuth_Server {
 		$redirect_uris = isset( $params['redirect_uris'] ) && is_array( $params['redirect_uris'] ) ? $params['redirect_uris'] : array();
 		$client_name   = isset( $params['client_name'] ) ? (string) $params['client_name'] : '';
 
+		// Registration is open (MCP clients register themselves), so only known callback hosts are accepted: otherwise
+		// anyone could register an app that sends a consenting user's authorization code to their own server.
+		foreach ( $redirect_uris as $uri ) {
+			if ( ! self::redirect_host_allowed( (string) $uri ) ) {
+				return new WP_REST_Response( array( 'error' => 'invalid_redirect_uri', 'error_description' => 'Redirect URI host is not allowed.' ), 400 );
+			}
+		}
+
 		$result = AMC_OAuth_Clients::instance()->register( $client_name, $redirect_uris );
 		if ( is_wp_error( $result ) ) {
 			return new WP_REST_Response( array( 'error' => $result->get_error_code(), 'error_description' => $result->get_error_message() ), $result->get_error_data()['status'] ?? 400 );
@@ -125,6 +133,22 @@ final class AMC_OAuth_Server {
 			),
 			201
 		);
+	}
+
+	/**
+	 * Hosts an OAuth client may send users back to: Claude (claude.ai / claude.com) and the local machine (Claude Code and
+	 * other local MCP clients). Filter `amc_oauth_redirect_hosts` to add more.
+	 */
+	public static function redirect_host_allowed( string $uri ): bool {
+		$host  = strtolower( (string) wp_parse_url( $uri, PHP_URL_HOST ) );
+		$hosts = (array) apply_filters( 'amc_oauth_redirect_hosts', array( 'claude.ai', 'claude.com', 'localhost', '127.0.0.1', '[::1]' ) );
+		foreach ( $hosts as $allowed ) {
+			$allowed = strtolower( (string) $allowed );
+			if ( $host === $allowed || str_ends_with( $host, '.' . $allowed ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public function rest_token( WP_REST_Request $request ) {
@@ -222,12 +246,24 @@ final class AMC_OAuth_Server {
 	// -----------------------------------------------------------------
 
 	public function handle_authorize_nopriv(): void {
-		$redirect_back = admin_url( 'admin-post.php?' . $_SERVER['QUERY_STRING'] );
+		// Back to this same request after login, rebuilt from the known parameters only.
+		$keys          = array( 'action', 'client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_method', 'scope', 'response_type' );
+		$args          = array();
+		foreach ( $keys as $key ) {
+			if ( isset( $_GET[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+				$args[ $key ] = rawurlencode( sanitize_text_field( wp_unslash( $_GET[ $key ] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
+			}
+		}
+		$redirect_back = add_query_arg( $args, admin_url( 'admin-post.php' ) );
 		wp_safe_redirect( wp_login_url( $redirect_back ) );
 		exit;
 	}
 
 	public function handle_authorize(): void {
+		// Connecting an AI client acts as this user on the site: editors and up only.
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_die( esc_html__( 'You do not have permission to connect apps to this site.', 'mcp-env-wp' ), 403 );
+		}
 		$client_id            = sanitize_text_field( wp_unslash( $_GET['client_id'] ?? '' ) );
 		$redirect_uri         = esc_url_raw( wp_unslash( $_GET['redirect_uri'] ?? '' ) );
 		$state                = sanitize_text_field( wp_unslash( $_GET['state'] ?? '' ) );
@@ -236,7 +272,7 @@ final class AMC_OAuth_Server {
 
 		$client = AMC_OAuth_Clients::instance()->get( $client_id );
 
-		if ( ! $client || ! AMC_OAuth_Clients::instance()->redirect_uri_is_registered( $client, $redirect_uri ) ) {
+		if ( ! $client || ! AMC_OAuth_Clients::instance()->redirect_uri_is_registered( $client, $redirect_uri ) || ! self::redirect_host_allowed( $redirect_uri ) ) {
 			wp_die( esc_html__( 'Unknown client or unregistered redirect URI.', 'mcp-env-wp' ), 400 );
 		}
 
@@ -252,6 +288,9 @@ final class AMC_OAuth_Server {
 
 	public function handle_consent(): void {
 		check_admin_referer( 'amc_oauth_consent' );
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_die( esc_html__( 'You do not have permission to connect apps to this site.', 'mcp-env-wp' ), 403 );
+		}
 
 		if ( isset( $_POST['amc_deny'] ) ) {
 			$redirect_uri = esc_url_raw( wp_unslash( $_POST['redirect_uri'] ?? '' ) );
