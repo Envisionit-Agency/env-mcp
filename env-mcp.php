@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       MCP ENV WP
  * Description:       Lets every agency user generate their own scoped MCP access token and connect Claude, ChatGPT, or Gemini to this WordPress site — with per-token control over which abilities (read/write/delete) are allowed.
- * Version:           1.0.0
+ * Version:           1.2.0
  * Requires at least: 6.9
  * Requires PHP:      8.1
  * Author:            Envisionit
@@ -15,7 +15,7 @@ declare( strict_types=1 );
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AMC_VERSION', '1.1.0' );
+define( 'AMC_VERSION', '1.2.0' );
 define( 'AMC_PLUGIN_FILE', __FILE__ );
 define( 'AMC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AMC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -41,6 +41,10 @@ require_once AMC_PLUGIN_DIR . 'includes/class-amc-rest.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-oauth-clients.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-oauth-refresh-tokens.php';
 require_once AMC_PLUGIN_DIR . 'includes/class-amc-oauth-server.php';
+require_once AMC_PLUGIN_DIR . 'includes/class-amc-updater.php';
+
+// Updates from GitHub releases work even when the MCP dependencies are missing.
+AMC_Updater::init();
 
 /**
  * Boots the plugin once all plugins have loaded (so the Abilities API / mcp-adapter

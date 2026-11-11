@@ -1,0 +1,30 @@
+# Push a tag like v1.2.1 (matching the Version in env-mcp.php) to publish a release with env-mcp.zip.
+# Sites with ENV_MCP_GITHUB_TOKEN in wp-config.php then see the update on the Plugins screen.
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Version matches the tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          grep -q "Version:[[:space:]]*$TAG\$" env-mcp.php || { echo "env-mcp.php Version is not $TAG"; exit 1; }
+          grep -q "AMC_VERSION', '$TAG'" env-mcp.php || { echo "AMC_VERSION is not $TAG"; exit 1; }
+      - name: Build zip
+        run: |
+          mkdir -p build/env-mcp
+          rsync -a --exclude .git/ --exclude .github/ --exclude build/ --exclude .DS_Store --exclude .gitignore ./ build/env-mcp/
+          cd build && zip -qr env-mcp.zip env-mcp
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/env-mcp.zip --title "$GITHUB_REF_NAME" --generate-notes
